@@ -7,6 +7,7 @@ library(patchwork)
 library(camcorder)
 library(ggtext)
 library(glue)
+library(ggforce)
 
 
 # Load data ---------------------------------------------------------------
@@ -98,15 +99,18 @@ cap <- paste0(
 
 ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = indicator_code)) +
   geom_bar(stat = "identity", position = position_dodge()) +
-  facet_grid(region ~ ., 
-             scale = "free_y",
-             space = "free_y",
+  facet_col(facets = vars(region),
+            scales = "free_y",
+            space = "free") +
+  # facet_grid(region ~ ., 
+  #            scale = "free_y",
+  #            space = "free_y",
            #  switch = "y",
             # strip.position = "left" #,
              # labeller = function(df) {
              #   list(as.character(df[,2]))
              #   }
-             ) +
+         #    ) +
   #theme_void() +
   theme(
     strip.text = element_text(size = 20),
