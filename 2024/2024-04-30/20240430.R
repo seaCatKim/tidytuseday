@@ -40,6 +40,10 @@ highlight_col <- ""
 
 # Data wrangling ----------------------------------------------------------
 
+my_cols <- RColorBrewer::brewer.pal(length(unique(wwbi_sum$region)), "Set3")
+## for easier assignment, name the colors
+names(my_cols) <- unique(wwbi_sum$region)
+
 # join region into data
 wwbi_sum <- wwbi_data |> 
   filter(indicator_code == "BI.PWK.PUBS.FE.ZS" | indicator_code == "BI.PWK.PRVS.FE.ZS") |> 
@@ -68,7 +72,12 @@ wwbi_sum <- wwbi_data |>
   ungroup() |> 
   mutate(
     perc = if_else(row_number() == 3, paste(perc, "Private Sector"), perc),
-    perc = if_else(row_number() == 6, paste(perc, "Public Sector"), perc)
+    perc = if_else(row_number() == 6, paste(perc, "Public Sector"), perc),
+    # add col to make each facet by region a different color
+    code_ind = as.integer(ordered(indicator_code)),
+    new_cols = my_cols[region],
+    ## now darken or lighten according to the rank
+    code_dark = darken(new_cols, amount = code_ind / 5)
   )
 
 wwbi_sum$income_group |> levels()
@@ -108,12 +117,17 @@ cap <- paste0(
 
 mywidth = .9
 
-plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = indicator_code)) +
-  geom_vline(xintercept = .5, lty = 2, alpha = 0.8, color = "red3") +
+plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = code_dark)) +
+  scale_fill_identity() +
+  # background 50% gray
+  geom_rect(data=NULL,aes(xmin=0,xmax=.5,ymin=-Inf,ymax=Inf),
+            fill="gray85")+
+ # geom_vline(xintercept = .5, lty = 2, alpha = 0.8, color = "red3") +
   geom_bar(stat = "identity", position = position_dodge(width = mywidth)) +
   facet_col(facets = vars(region),
             scales = "free_y",
             space = "free") +
+
   # add percent labels
   geom_text(aes(label = perc),  hjust = 0, 
             position = position_dodge(width = mywidth),
@@ -165,19 +179,19 @@ map <-
       #  panel.background = 
         axis.text = element_blank(),
         axis.ticks = element_blank(),
-      plot.background = element_rect(fill = bg_col, colour = bg_col),
-      panel.background = element_rect(fill = bg_col, colour = bg_col),
+      plot.background = element_blank(),
+      panel.background = element_blank(),
       panel.border = element_blank(),
       plot.margin = margin(0,0,0,0)) +
   scale_fill_brewer(type = "qual", palette = "Set3")+
   guides(fill = "none") +
-  annotate(geom = "text", x = 130, y = 10, label = "East Asia & Pacific", size = 7) +
-  annotate(geom = "text", x = 80, y = 22, label = "South Asia", size = 7) +
-  annotate(geom = "text", x = 65, y = 55, label = "Europe & Central Asia", size = 7) +
-  annotate(geom = "text", x = 25, y = 30, label = "Middle East & North Africa", size = 7) +
+  annotate(geom = "text", x = 130, y = 5, label = "East Asia & Pacific", size = 7) +
+  annotate(geom = "text", x = 80, y = 20, label = "South Asia", size = 7) +
+  annotate(geom = "text", x = 65, y = 60, label = "Europe & Central Asia", size = 7) +
+  annotate(geom = "text", x = 15, y = 30, label = "Middle East & North Africa", size = 7) +
   annotate(geom = "text", x = 25, y = 0, label = "Sub-Saharan Africa", size = 7) +
-  annotate(geom = "text", x = -55, y = -10, label = "South America", size = 7) +
-  annotate(geom = "text", x = -100, y = 40, label = "North America", size = 7) +
+  annotate(geom = "text", x = -65, y = -10, label = "Latin America & Caribbean", size = 7) +
+  annotate(geom = "text", x = -100, y = 50, label = "North America", size = 7) +
   labs(x = "", y = "")
 ggsave("plots/WB_region_map.png")
 
@@ -190,7 +204,7 @@ ggdraw() +
 #map <- image_read("plots/WB_region_map.png")
 #image_ggplot(map)
 
-plot + inset_element(map, left = .52, bottom = -.10, right = 1, top = 0.35, align_to = "plot")
+plot + inset_element(map, left = .53, bottom = -.05, right = 1, top = 0.35, align_to = "plot")
 
 # Save gif ----------------------------------------------------------------
 
