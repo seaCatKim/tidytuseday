@@ -8,6 +8,11 @@ library(camcorder)
 library(ggtext)
 library(glue)
 library(ggforce)
+library(forcats)
+library(sf)
+library(magick)
+
+library(cowplot)
 
 
 # Load data ---------------------------------------------------------------
@@ -27,7 +32,7 @@ showtext_auto()
 
 # Define colours ----------------------------------------------------------
 
-bg_col <- ""
+bg_col <- "#F3F2EE"
 text_col <- ""
 highlight_col <- ""
 
@@ -51,15 +56,21 @@ wwbi_sum <- wwbi_data |>
   mutate(income_group = factor(income_group,
                                exclude = NULL,
                                levels = c("High income", "Upper middle income", "Lower middle income", "Low income", NA),
-                               labels = c("High", "Upper Middle", "Lower Middle", "Low", "Not assigned"))) |> 
+                               labels = c("High", "Upper Middle", "Lower Middle", "Low", "Not assigned")),
+         income_group = fct_inorder(income_group),
+         income_group = fct_relevel(income_group, "Not assigned", after = 0)) |> 
   group_by(region, indicator_code, income_group) |> 
   summarize(
     # average countries per region
-    reg_ave = mean(ave), n = n(), SE = sd(ave)/sqrt(n())
-            ) |> 
-  ungroup()
+    reg_ave = mean(ave), n = n(), SE = sd(ave)/sqrt(n()),
+    perc = paste0(" ", sprintf("%2.0f", reg_ave * 100), "%", " ")) |> 
+  ungroup() |> 
+  mutate(
+    perc = if_else(row_number() == 3, paste(perc, "Private Sector"), perc),
+    perc = if_else(row_number() == 6, paste(perc, "Public Sector"), perc)
+  )
 
-wwbi_sum
+wwbi_sum$income_group |> levels()
 
 
 # BI.EMP.PWRK.PB.FE.ZS: Public sector employment, as a share of paid employment by gender: female
@@ -92,35 +103,44 @@ cap <- paste0(
   "**Data**: <br>", social
 )
 
-
 # Plot --------------------------------------------------------------------
 
-# labeller function
+mywidth = .9
 
-ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = indicator_code)) +
-  geom_bar(stat = "identity", position = position_dodge()) +
+plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = indicator_code)) +
+  geom_vline(xintercept = .5, lty = 2, alpha = 0.8, color = "red3") +
+  geom_bar(stat = "identity", position = position_dodge(width = mywidth)) +
   facet_col(facets = vars(region),
             scales = "free_y",
             space = "free") +
-  # facet_grid(region ~ ., 
-  #            scale = "free_y",
-  #            space = "free_y",
-           #  switch = "y",
-            # strip.position = "left" #,
-             # labeller = function(df) {
-             #   list(as.character(df[,2]))
-             #   }
-         #    ) +
-  #theme_void() +
+  # add percent labels
+  geom_text(aes(label = perc),  hjust = 0, 
+            position = position_dodge(width = mywidth),
+            size = 6, fontface = "italic", family = "sans") +
+  theme_void() +
   theme(
-    strip.text = element_text(size = 20),
-    strip.text.y = element_text(size = 20, angle = 0),
-    #axis.text.y = element_blank(),
-    #axis.ticks.y = element_blank(),
-    title = element_text(size = 22)
+    plot.margin = margin(5, 5, 5, 5),
+    strip.text = element_text(size = 26, hjust = 0),
+    axis.text.y = element_text(size = 20, 
+                               hjust = 0.9, 
+                               # padding on right of strip label
+                               margin = margin(0, 3, 0, 0)),
+    title = element_text(size = 30),
+    plot.title = element_textbox_simple(
+    margin = margin(b = 8, t = 10),
+    lineheight = 0.5,
+    size = rel(1.5),
+    face = "bold"
+    ),
+    plot.background = element_rect(fill = bg_col, colour = bg_col),
+    panel.background = element_rect(fill = bg_col, colour = bg_col)
   ) +
- # ggtitle(wwbi_sum$region) +
-  guides(fill = "none")
+  scale_x_continuous(limits = c(0,1),
+                    breaks = seq(0, 0.7, by = .2), expand = c(0,0)) +
+  guides(fill = "none") +
+  labs(x = "Percentage of Females in the Workforce",
+       y = "Country Income Level",
+       title = "Proportion of Females Working in Private and Public Sectors") 
 
 wwbi_sum |> 
 #  group_by(region, .add = FALSE) |> 
@@ -162,16 +182,64 @@ plot_list <- wwbi_sum |>
                 space = "free_y") +
         theme_void() +
         theme(
-           strip.text = element_text(size = 16),
+           strip.text = element_text(size = 20),
            axis.text.y = element_blank(),
            axis.ticks = element_blank(),
-           title = element_text(size = 22)
+           title = element_text(size = 26)
          ) +
         ggtitle(.x$region) +
       guides(fill = "none")
       )
 
 plot_list[[1]] / plot_list[[2]] / plot_list[[3]] / plot_list[[4]] / plot_list[[5]] / plot_list[[6]] / plot_list[[7]]
+
+# World map ---------------------------------------------------------------
+world <- st_read("2024/2024-04-30/shapefile/WB_countries_Admin0_10m.shp") |> 
+  select(FORMAL_EN, REGION_WB, NAME_EN, WB_REGION, geometry) |> 
+  filter(REGION_WB != "Antarctica")
+
+
+  
+st_crs(world)
+
+world |> group_by(WB_REGION) |> summarize()
+
+plot(world)
+map <- 
+  ggplot(world) +
+  geom_sf(aes(fill = REGION_WB), color = NA) +
+  # prevent ggplot from expanding beyond map limits
+  coord_sf(expand = FALSE) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      #  panel.background = 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+      plot.background = element_rect(fill = bg_col, colour = bg_col),
+      panel.background = element_rect(fill = bg_col, colour = bg_col),
+     # panel.border = element_blank(),
+      plot.margin = margin(0,0,0,0)) +
+  scale_fill_brewer(type = "qual", palette = "Set3")+
+  guides(fill = "none") +
+  annotate(geom = "text", x = 130, y = 15, label = "East Asia & Pacific", size = 10) +
+  annotate(geom = "text", x = 80, y = 25, label = "South Asia", size = 10) +
+  annotate(geom = "text", x = 65, y = 55, label = "Europe & Central Asia", size = 10) +
+  annotate(geom = "text", x = 25, y = 30, label = "Middle East & North Africa", size = 10) +
+  annotate(geom = "text", x = 25, y = 0, label = "Sub-Saharan Africa", size = 10) +
+  annotate(geom = "text", x = -55, y = -10, label = "South America", size = 10) +
+  annotate(geom = "text", x = -100, y = 40, label = "North America", size = 10)
+ggsave("plots/WB_region_map.png")
+
+#myfile <- 
+ggdraw() +
+  # distorts the original ggplot formatting?
+  draw_plot(plot) +
+  draw_image("plots/WB_region_map.png", x = 0.35, vjust = .35, scale = .35)
+
+#map <- image_read("plots/WB_region_map.png")
+#image_ggplot(map)
+
+plot + inset_element(map, left = .55, bottom = 0, right = 0.95, top = 0.4)
 
 # Save gif ----------------------------------------------------------------
 
