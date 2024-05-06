@@ -11,8 +11,9 @@ library(ggforce)
 library(forcats)
 library(sf)
 library(magick)
+library(colorspace)
 
-library(cowplot)
+#library(cowplot)
 
 
 # Load data ---------------------------------------------------------------
@@ -127,7 +128,7 @@ plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = indicator_cod
                                margin = margin(0, 3, 0, 0)),
     title = element_text(size = 30),
     plot.title = element_textbox_simple(
-    margin = margin(b = 8, t = 10),
+    margin = margin(b = 8, t = 10, l = 0),
     lineheight = 0.5,
     size = rel(1.5),
     face = "bold"
@@ -217,17 +218,18 @@ map <-
         axis.ticks = element_blank(),
       plot.background = element_rect(fill = bg_col, colour = bg_col),
       panel.background = element_rect(fill = bg_col, colour = bg_col),
-     # panel.border = element_blank(),
+      panel.border = element_blank(),
       plot.margin = margin(0,0,0,0)) +
   scale_fill_brewer(type = "qual", palette = "Set3")+
   guides(fill = "none") +
-  annotate(geom = "text", x = 130, y = 15, label = "East Asia & Pacific", size = 10) +
-  annotate(geom = "text", x = 80, y = 25, label = "South Asia", size = 10) +
-  annotate(geom = "text", x = 65, y = 55, label = "Europe & Central Asia", size = 10) +
-  annotate(geom = "text", x = 25, y = 30, label = "Middle East & North Africa", size = 10) +
-  annotate(geom = "text", x = 25, y = 0, label = "Sub-Saharan Africa", size = 10) +
-  annotate(geom = "text", x = -55, y = -10, label = "South America", size = 10) +
-  annotate(geom = "text", x = -100, y = 40, label = "North America", size = 10)
+  annotate(geom = "text", x = 130, y = 10, label = "East Asia & Pacific", size = 7) +
+  annotate(geom = "text", x = 80, y = 22, label = "South Asia", size = 7) +
+  annotate(geom = "text", x = 65, y = 55, label = "Europe & Central Asia", size = 7) +
+  annotate(geom = "text", x = 25, y = 30, label = "Middle East & North Africa", size = 7) +
+  annotate(geom = "text", x = 25, y = 0, label = "Sub-Saharan Africa", size = 7) +
+  annotate(geom = "text", x = -55, y = -10, label = "South America", size = 7) +
+  annotate(geom = "text", x = -100, y = 40, label = "North America", size = 7) +
+  labs(x = "", y = "")
 ggsave("plots/WB_region_map.png")
 
 #myfile <- 
@@ -239,7 +241,7 @@ ggdraw() +
 #map <- image_read("plots/WB_region_map.png")
 #image_ggplot(map)
 
-plot + inset_element(map, left = .55, bottom = 0, right = 0.95, top = 0.4)
+plot + inset_element(map, left = .52, bottom = -.10, right = 1, top = 0.35, align_to = "plot")
 
 # Save gif ----------------------------------------------------------------
 
