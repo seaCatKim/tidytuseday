@@ -143,57 +143,6 @@ plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = indicator_cod
        y = "Country Income Level",
        title = "Proportion of Females Working in Private and Public Sectors") 
 
-wwbi_sum |> 
-#  group_by(region, .add = FALSE) |> 
-  group_split(region) |>
-  map(nrow)
-  map(~ ggsave(filename = paste0(unique(.x$region), ".png"),
-                                 plot = ggplot(.x, aes(x = reg_ave, y = indicator_code, fill = indicator_code)) +
-        geom_bar(stat = "identity") +
-        facet_wrap(region ~ income_group, ncol = 1) +
-        theme_void() +
-        theme(
-          strip.text = element_blank(),
-          axis.text.y = element_blank(),
-          axis.ticks = element_blank()
-        ) +
-        ggtitle(.x$region),
-        device = "png",
-        path = "plots/")
-      )
-
-# widths all the same
-width_multiplier <- 1 # try .5 also  
-(num_of_bigger <- 8)
-(num_of_smaller <- 2)
-(width_fraction <- width_multiplier * num_of_smaller/num_of_bigger)
-
-
-# map the ggplots
-# bars not the same size though bc of different number of bars...
-plot_list <- wwbi_sum |> 
- # group_by(region, .add = FALSE) |> 
-  group_split(region) |>
-  map(~ ggplot(.x, aes(x = reg_ave, y = indicator_code, fill = indicator_code)) +
-        geom_bar(stat = "identity", width = 1 * nrow(.x)/15) +
-        facet_grid(vars(income_group), 
-                  # ncol = 1, 
-                   switch = "y",
-                   scales = "free_y",
-                space = "free_y") +
-        theme_void() +
-        theme(
-           strip.text = element_text(size = 20),
-           axis.text.y = element_blank(),
-           axis.ticks = element_blank(),
-           title = element_text(size = 26)
-         ) +
-        ggtitle(.x$region) +
-      guides(fill = "none")
-      )
-
-plot_list[[1]] / plot_list[[2]] / plot_list[[3]] / plot_list[[4]] / plot_list[[5]] / plot_list[[6]] / plot_list[[7]]
-
 # World map ---------------------------------------------------------------
 world <- st_read("2024/2024-04-30/shapefile/WB_countries_Admin0_10m.shp") |> 
   select(FORMAL_EN, REGION_WB, NAME_EN, WB_REGION, geometry) |> 
