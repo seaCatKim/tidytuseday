@@ -57,7 +57,7 @@ wwbi_sum <- wwbi_data |>
   mutate(income_group = factor(income_group,
                                exclude = NULL,
                                levels = c("High income", "Upper middle income", "Lower middle income", "Low income", NA),
-                               labels = c("High", "Upper Middle", "Lower Middle", "Low", "Not assigned")),
+                               labels = c("High Income", "Upper Middle", "Lower Middle", "Low Income", "Not assigned")),
          income_group = fct_inorder(income_group),
          income_group = fct_relevel(income_group, "Not assigned", after = 0)) |> 
   group_by(region, indicator_code, income_group) |> 
