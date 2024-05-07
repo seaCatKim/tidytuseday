@@ -40,24 +40,20 @@ highlight_col <- ""
 
 # Data wrangling ----------------------------------------------------------
 
-my_cols <- RColorBrewer::brewer.pal(length(unique(wwbi_sum$region)), "Set3")
-## for easier assignment, name the colors
-names(my_cols) <- unique(wwbi_sum$region)
+# BI.PWK.PUBS.FE.ZS: Females, as a share of public paid employees
+# BI.PWK.PRVS.FE.ZS: Females, as a share of private paid employees
 
-# join region into data
 wwbi_sum <- wwbi_data |> 
   filter(indicator_code == "BI.PWK.PUBS.FE.ZS" | indicator_code == "BI.PWK.PRVS.FE.ZS") |> 
   left_join(y = wwbi_country |> select(country_code, short_name, region, income_group)) |> 
+  # assign missing regions
   mutate(region = case_when(country_code == "AIA" | country_code == "MSR" ~ "Latin America & CAribbean",
                             .default = as.character(region)))|> 
   group_by(country_code, indicator_code, region, short_name, income_group) |>
   summarize(
-    #average years per country
     ave = mean(value), SE = sd(value)/sqrt(n())
   ) |> 
   ungroup() |> 
- # pivot_wider(names_from = income_group, values_from = c(ave, SE), values_fill = 0) |>
-#  pivot_longer(cols = `ave_Low income`:SE_NA, names_to = c(".value", "income_group"), names_sep = "_") |> 
   mutate(income_group = factor(income_group,
                                exclude = NULL,
                                levels = c("High income", "Upper middle income", "Lower middle income", "Low income", NA),
@@ -71,21 +67,22 @@ wwbi_sum <- wwbi_data |>
     perc = paste0(" ", sprintf("%2.0f", reg_ave * 100), "%", " ")) |> 
   ungroup() |> 
   mutate(
+    # create labels on the bars
     perc = if_else(row_number() == 3, paste(perc, "Private Sector"), perc),
-    perc = if_else(row_number() == 6, paste(perc, "Public Sector"), perc),
+    perc = if_else(row_number() == 6, paste(perc, "Public Sector"), perc))
+
+my_cols <- RColorBrewer::brewer.pal(length(unique(wwbi_sum$region)), "Set3")
+## for easier assignment, name the colors
+names(my_cols) <- unique(wwbi_sum$region)
+
+wwbi_sum <- wwbi_sum |> 
+  mutate(
     # add col to make each facet by region a different color
     code_ind = as.integer(ordered(indicator_code)),
     new_cols = my_cols[region],
     ## now darken or lighten according to the rank
     code_dark = darken(new_cols, amount = code_ind / 5)
   )
-
-wwbi_sum$income_group |> levels()
-
-
-# BI.EMP.PWRK.PB.FE.ZS: Public sector employment, as a share of paid employment by gender: female
-# BI.PWK.PUBS.FE.ZS: Females, as a share of public paid employees
-# BI.PWK.PRVS.FE.ZS: Females, as a share of private paid employees
 
 # Start recording ---------------------------------------------------------
 
@@ -142,11 +139,17 @@ plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = code_dark)) +
                                margin = margin(0, 3, 0, 0)),
     title = element_text(size = 30),
     plot.title = element_textbox_simple(
-    margin = margin(b = 8, t = 10, l = 0),
-    lineheight = 0.5,
+    margin = margin(b = 4, t = 8, l = 8),
+    lineheight = 0.9,
     size = rel(1.5),
-    face = "bold"
+    face = "bold",
+    halign = 0
     ),
+    plot.subtitle = element_textbox_simple( margin = margin(b = 4, t = 0, l = 8)),
+    plot.caption = element_text(hjust = 0, 
+                                lineheight = 0.3, size = 20,
+                                margin = margin(b = 2, t = 4, l = -6)), 
+    plot.title.position = "plot",
     plot.background = element_rect(fill = bg_col, colour = bg_col),
     panel.background = element_rect(fill = bg_col, colour = bg_col)
   ) +
@@ -155,22 +158,28 @@ plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = code_dark)) +
   guides(fill = "none") +
   labs(x = "Percentage of Females in the Workforce",
        y = "Country Income Level",
-       title = "Proportion of Females Working in Private and Public Sectors") 
+       title = "Proportion of Females Working in Private and Public Sectors",
+       subtitle = "Gender Equity in the Workforce Globally from the WorldWide Bureaucracy Indicators",
+       caption = "Data: World Bank
+Retrieved from: https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-04-30/wwbi_data.csv
+https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-04-30/wwbi_series.csv
+https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-04-30/wwbi_country.csv
+Visualization: Catherine Kim")
+ # annotate(
+    # geom = "text",
+    # x = .6,
+    # y = .75,
+    # label = c("", "", "", "Show some text", "", "", "")
+
 
 # World map ---------------------------------------------------------------
 world <- st_read("2024/2024-04-30/shapefile/WB_countries_Admin0_10m.shp") |> 
   select(FORMAL_EN, REGION_WB, NAME_EN, WB_REGION, geometry) |> 
   filter(REGION_WB != "Antarctica")
 
-
-  
 st_crs(world)
 
-world |> group_by(WB_REGION) |> summarize()
-
-plot(world)
-map <- 
-  ggplot(world) +
+map <- ggplot(world) +
   geom_sf(aes(fill = REGION_WB), color = NA) +
   # prevent ggplot from expanding beyond map limits
   coord_sf(expand = FALSE) +
@@ -188,23 +197,45 @@ map <-
   annotate(geom = "text", x = 130, y = 5, label = "East Asia & Pacific", size = 7) +
   annotate(geom = "text", x = 80, y = 20, label = "South Asia", size = 7) +
   annotate(geom = "text", x = 65, y = 60, label = "Europe & Central Asia", size = 7) +
-  annotate(geom = "text", x = 15, y = 30, label = "Middle East & North Africa", size = 7) +
+  annotate(geom = "text", x = 15, y = 35, label = "Middle East & North Africa", size = 7) +
   annotate(geom = "text", x = 25, y = 0, label = "Sub-Saharan Africa", size = 7) +
   annotate(geom = "text", x = -65, y = -10, label = "Latin America & Caribbean", size = 7) +
   annotate(geom = "text", x = -100, y = 50, label = "North America", size = 7) +
   labs(x = "", y = "")
-ggsave("plots/WB_region_map.png")
+#ggsave("plots/WB_region_map.png")
 
-#myfile <- 
-ggdraw() +
-  # distorts the original ggplot formatting?
-  draw_plot(plot) +
-  draw_image("plots/WB_region_map.png", x = 0.35, vjust = .35, scale = .35)
+text <- tibble(
+  label = "Females have higher employment<br>
+rates in the public sector than the<br>
+private sector. Few regions have<br>
+a majority of women working<br>
+in the public sector which is more<br>
+likely in higher income countries.",
+  x = 0,
+  y = 0,
+  hjust = .5,
+  vjust = 0.5,
+  orientation = "upright",
+  color = "black",
+  fill = "cornsilk"
+)
 
-#map <- image_read("plots/WB_region_map.png")
-#image_ggplot(map)
+#text_wrap <- cat(stringr::str_wrap(text, width = 60), "\n"
+test_text <- ggplot() + 
+  geom_richtext(data = text, aes(x,y, label = label, 
+                                 hjust = hjust, vjust = vjust), 
+           # width = unit(.7, "npc"),
+              fill = bg_col, 
+            size = 10,
+            lineheight = .35,
+           label.r = unit(0.5, "lines"),
+           label.padding = unit(0.5, "lines")) +
+  theme_void()
+# put map as inset on plot
+plot + 
+  inset_element(map, left = .53, bottom = -.05, right = 1, top = 0.35, align_to = "plot") + 
+  inset_element(test_text, left = .3, bottom = .9, right = 1.3, top = .25, align_to = "panel")
 
-plot + inset_element(map, left = .53, bottom = -.05, right = 1, top = 0.35, align_to = "plot")
 
 # Save gif ----------------------------------------------------------------
 
