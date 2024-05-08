@@ -65,11 +65,7 @@ wwbi_sum <- wwbi_data |>
     # average countries per region
     reg_ave = mean(ave), n = n(), SE = sd(ave)/sqrt(n()),
     perc = paste0(" ", sprintf("%2.0f", reg_ave * 100), "%", " ")) |> 
-  ungroup() |> 
-  mutate(
-    # create labels on the bars
-    perc = if_else(row_number() == 3, paste(perc, "Private Sector"), perc),
-    perc = if_else(row_number() == 6, paste(perc, "Public Sector"), perc))
+  ungroup() 
 
 my_cols <- RColorBrewer::brewer.pal(length(unique(wwbi_sum$region)), "Set3")
 ## for easier assignment, name the colors
@@ -159,7 +155,7 @@ plot <- ggplot(wwbi_sum, aes(x = reg_ave, y = income_group, fill = code_dark)) +
   labs(x = "Percentage of Females in the Workforce",
        y = "Country Income Level",
        title = "Proportion of Females Working in Private and Public Sectors",
-       subtitle = "Gender Equity in the Workforce Globally from the WorldWide Bureaucracy Indicators",
+       subtitle = "Gender Equity in the Workforce Globally from the World Bank Worldwide Bureaucracy Indicators",
        caption = "Data: World Bank
 Retrieved from: https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-04-30/wwbi_data.csv
 https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-04-30/wwbi_series.csv
@@ -207,10 +203,10 @@ map <- ggplot(world) +
 text <- tibble(
   label = "Females have higher employment<br>
 rates in the public sector than the<br>
-private sector. Few regions have<br>
-a majority of women working<br>
-in the public sector which is more<br>
-likely in higher income countries.",
+private sector. Most regions have<br>
+a majority of females working<br>
+in the public sector, but mostly<br>
+in high income countries.",
   x = 0,
   y = 0,
   hjust = .5,
@@ -222,6 +218,7 @@ likely in higher income countries.",
 
 #text_wrap <- cat(stringr::str_wrap(text, width = 60), "\n"
 test_text <- ggplot() + 
+  xlim(-1, 1) + ylim(-1, 1) +
   geom_richtext(data = text, aes(x,y, label = label, 
                                  hjust = hjust, vjust = vjust), 
            # width = unit(.7, "npc"),
@@ -230,7 +227,41 @@ test_text <- ggplot() +
             lineheight = .35,
            label.r = unit(0.5, "lines"),
            label.padding = unit(0.5, "lines")) +
-  theme_void()
+  theme_void() +
+  annotate(
+    geom = "curve",
+    x = -.19, xend = -.37,
+    y = -.69, yend = -.74,
+    curvature = -.2,
+    arrow = arrow(length = unit(3, "pt"), type = "closed"),
+    color = "gray40"
+  ) +
+  annotate(
+    geom = "text",
+    label = "Public Sector",
+    x = -.06, 
+    y = -.7,  
+    size = 9,
+    color = "gray40",
+    fontface = "italic"
+  ) +
+  annotate(
+    geom = "curve",
+    x = -.55, xend = -.88,
+    y = -1, yend = -.93,
+    curvature = .1,
+    arrow = arrow(length = unit(3, "pt"), type = "closed"),
+    color = "gray40"
+  ) +
+  annotate(
+    geom = "text",
+    label = "Private Sector",
+    x = -.41, 
+    y = -1,  
+    size = 9,
+    color = "gray40",
+    fontface = "italic"
+  )
 # put map as inset on plot
 plot + 
   inset_element(map, left = .53, bottom = -.05, right = 1, top = 0.35, align_to = "plot") + 
