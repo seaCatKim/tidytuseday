@@ -1,2 +1,3 @@
-recording
-shapefile
+recording/
+shapefile/
+*.png
